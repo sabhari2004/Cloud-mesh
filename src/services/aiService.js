@@ -88,8 +88,53 @@ export const aiService = {
       score: urgencyScore,
       suggestedCategory,
       detectedFactors,
-      engine: isGeminiAvailable ? 'Gemini Pro + Local Triage' : 'CloudMesh Intelligent Heuristic Engine',
+      engine: isGeminiAvailable ? 'Gemini 1.5 Flash + Local Triage' : 'CloudMesh Intelligent Heuristic Engine',
     };
+  },
+
+  // Asynchronous LLM classification with live Google Gemini API + fallback
+  async classifyEmergencyWithGemini(text = '', userCategory = '') {
+    if (isGeminiAvailable) {
+      try {
+        const prompt = `You are a disaster emergency triage assistant. Analyze this incident description and output strictly valid JSON:
+Incident description: "${text}". Category: "${userCategory}".
+Output JSON schema:
+{
+  "severity": "critical" | "high" | "medium" | "low",
+  "score": number (0 to 100),
+  "suggestedCategory": "medical" | "flood_storm" | "fire" | "structural" | "utility_outage" | "search_rescue" | "supplies_food" | "other",
+  "detectedFactors": ["factor 1", "factor 2"]
+}`;
+
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: { responseMimeType: 'application/json' },
+            }),
+          }
+        );
+
+        if (res.ok) {
+          const data = await res.json();
+          const raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            return {
+              ...parsed,
+              engine: 'Google Gemini 1.5 Flash (Live Cloud LLM)',
+            };
+          }
+        }
+      } catch (err) {
+        console.warn('Gemini live call error, using deterministic local engine:', err);
+      }
+    }
+
+    return this.classifyEmergency(text, userCategory);
   },
 
   // Match emergency needs to available community inventory

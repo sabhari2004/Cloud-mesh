@@ -10,7 +10,8 @@ import {
   where,
   orderBy,
   serverTimestamp,
-  limit as firestoreLimit
+  limit as firestoreLimit,
+  onSnapshot
 } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from '../lib/firebase';
 import { localStore } from './localStore';
@@ -236,5 +237,28 @@ export const resourceService = {
 
     const resources = localStore.get('resources', []);
     return resources.filter((r) => r.ownerId === userId);
+  },
+
+  // Real-time synchronization subscription for live catalog updates
+  subscribeToResources(callback) {
+    if (isFirebaseConfigured && db) {
+      const q = query(collection(db, 'resources'), orderBy('createdAt', 'desc'), firestoreLimit(50));
+      return onSnapshot(q, (snapshot) => {
+        const items = snapshot.docs.map((docSnap) => ({
+          id: docSnap.id,
+          ...docSnap.data(),
+        }));
+        callback(items);
+      }, (err) => {
+        console.warn('Firestore resource subscription notice:', err.message);
+      });
+    }
+
+    // Offline / Local storage fallback observer
+    const pollInterval = setInterval(() => {
+      callback(localStore.get('resources', []));
+    }, 5000);
+
+    return () => clearInterval(pollInterval);
   }
 };

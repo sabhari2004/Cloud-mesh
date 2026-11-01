@@ -1,0 +1,152 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && getUserData().role == 'admin';
+    }
+
+    function isResponder() {
+      return isAuthenticated() && (getUserData().role == 'responder' || getUserData().role == 'admin');
+    }
+
+    // =========================================================================
+    // 1. Users Collection
+    // =========================================================================
+    match /users/{userId} {
+      // Anyone authenticated can read user profiles (for names/locations on resources)
+      allow read: if isAuthenticated();
+
+      // Users can only create their own profile during initial signup
+      // Cannot set their own role to admin or responder on creation
+      allow create: if isAuthenticated() 
+        && request.auth.uid == userId
+        && request.resource.data.role == 'user'
+        && request.resource.data.status == 'active';
+
+      // Users can update their own profile name, phone, location, bio
+      // Disallow updating role or status directly unless Admin
+      allow update: if isAuthenticated() && (
+        isAdmin() || (
+          request.auth.uid == userId
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.status == resource.data.status
+        )
+      );
+
+      // Only admins can delete user documents
+      allow delete: if isAdmin();
+    }
+
+    // =========================================================================
+    // 2. Resources Collection
+    // =========================================================================
+    match /resources/{resourceId} {
+      // Public read access to community resources
+      allow read: if true;
+
+      // Authenticated users can create listings; must be the recorded owner
+      allow create: if isAuthenticated()
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.title is string && request.resource.data.title.size() > 0
+        && request.resource.data.quantity is number && request.resource.data.quantity >= 0
+        && request.resource.data.category in ['food', 'water', 'clothing', 'shelter', 'medical', 'transportation', 'equipment', 'other']
+        && request.resource.data.availability in ['available', 'reserved', 'partially_available', 'unavailable'];
+
+      // Only the listing owner or an administrator can update or delete
+      allow update: if isAuthenticated() && (
+        resource.data.ownerId == request.auth.uid || isAdmin()
+      );
+
+      allow delete: if isAuthenticated() && (
+        resource.data.ownerId == request.auth.uid || isAdmin()
+      );
+    }
+
+    // =========================================================================
+    // 3. Resource Requests Collection
+    // =========================================================================
+    match /resourceRequests/{requestId} {
+      // Requesters, resource owners, and admins can view the request
+      allow read: if isAuthenticated() && (
+        resource.data.requesterId == request.auth.uid
+        || resource.data.ownerId == request.auth.uid
+        || isAdmin()
+      );
+
+      // Authenticated users can submit a request (must not be their own resource)
+      allow create: if isAuthenticated()
+        && request.resource.data.requesterId == request.auth.uid
+        && request.resource.data.ownerId != request.auth.uid
+        && request.resource.data.requestedQuantity is number && request.resource.data.requestedQuantity > 0
+        && request.resource.data.status == 'pending';
+
+      // Status updates:
+      // - Requester can only 'cancel'
+      // - Resource Owner can 'accept', 'reject', 'complete', or 'cancelled'
+      // - Admin can perform any transition
+      allow update: if isAuthenticated() && (
+        isAdmin()
+        || (resource.data.requesterId == request.auth.uid && request.resource.data.status == 'cancelled')
+        || (resource.data.ownerId == request.auth.uid && request.resource.data.status in ['accepted', 'rejected', 'completed', 'cancelled'])
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    // =========================================================================
+    // 4. Emergency Reports Collection
+    // =========================================================================
+    match /emergencyReports/{reportId} {
+      // Anyone can read active incidents to ensure community safety & awareness
+      allow read: if true;
+
+      // Authenticated citizens can submit an emergency report
+      allow create: if true // Allows anonymous quick reports in severe peril
+        && request.resource.data.title is string && request.resource.data.title.size() > 0
+        && request.resource.data.location is string && request.resource.data.location.size() > 0
+        && request.resource.data.severity in ['critical', 'high', 'medium', 'low']
+        && request.resource.data.status == 'reported';
+
+      // Privileged incident operations (verify, assign, update status, responder logs)
+      // Restricted strictly to authorized responders and administrators
+      allow update: if isResponder();
+
+      // Only administrators can delete incident records
+      allow delete: if isAdmin();
+    }
+
+    // =========================================================================
+    // 5. Notifications Collection
+    // =========================================================================
+    match /notifications/{notificationId} {
+      // Users can only read their own notifications
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+
+      // Authenticated users can create notifications (for counterparties on requests)
+      allow create: if isAuthenticated()
+        && request.resource.data.userId is string
+        && request.resource.data.title is string;
+
+      // Users can only mark their own notifications as read
+      allow update: if isAuthenticated()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == resource.data.userId;
+
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+  }
+}

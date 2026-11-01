@@ -3,6 +3,7 @@ import { X, Package, MapPin, Calendar, AlertCircle, Phone, Tag, Check, Loader2 }
 import { resourceService } from '../services/resourceService';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from './Toast';
+import { sanitizeText, sanitizeNumber } from '../utils/sanitize';
 
 export const OfferResourceModal = ({ isOpen, onClose, onSuccess, initialData = null }) => {
   const { currentUser } = useAuth();
@@ -73,15 +74,15 @@ export const OfferResourceModal = ({ isOpen, onClose, onSuccess, initialData = n
 
     try {
       const payload = {
-        title,
-        description,
+        title: sanitizeText(title, 120),
+        description: sanitizeText(description, 1500),
         category,
-        quantity: Number(quantity),
-        unit,
-        location,
+        quantity: sanitizeNumber(quantity, 1, 100000, 1),
+        unit: sanitizeText(unit, 30),
+        location: sanitizeText(location, 120),
         availability,
         contactPreferences,
-        contact: contactInfo,
+        contact: sanitizeText(contactInfo, 100),
         urgent,
         expiryDate: new Date(expiryDate).toISOString(),
       };

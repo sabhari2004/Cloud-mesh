@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './components/Toast';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { NetworkStatusBanner } from './components/NetworkStatusBanner';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { EmergencyBanner } from './components/EmergencyBanner';
@@ -55,6 +57,9 @@ function MainApp() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-800">
+      {/* Real-time Network Connectivity Observer */}
+      <NetworkStatusBanner />
+
       {/* Top Critical Incident Alert Banner */}
       <EmergencyBanner onOpenEmergencyPage={() => setActiveTab('emergency')} />
 
@@ -164,10 +169,12 @@ function MainApp() {
 
 export default function App() {
   return (
-    <ToastProvider>
-      <AuthProvider>
-        <MainApp />
-      </AuthProvider>
-    </ToastProvider>
+    <ErrorBoundary>
+      <ToastProvider>
+        <AuthProvider>
+          <MainApp />
+        </AuthProvider>
+      </ToastProvider>
+    </ErrorBoundary>
   );
 }

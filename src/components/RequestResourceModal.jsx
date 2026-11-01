@@ -3,6 +3,7 @@ import { X, HandHeart, Calendar, AlertCircle, Phone, Package, Loader2 } from 'lu
 import { requestService } from '../services/requestService';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from './Toast';
+import { sanitizeText, sanitizeNumber } from '../utils/sanitize';
 
 export const RequestResourceModal = ({ isOpen, onClose, resource, onSuccess }) => {
   const { currentUser } = useAuth();
@@ -47,10 +48,10 @@ export const RequestResourceModal = ({ isOpen, onClose, resource, onSuccess }) =
         resourceCategory: resource.category,
         ownerId: resource.ownerId,
         ownerName: resource.ownerName,
-        requestedQuantity: Number(quantity),
-        neededByDate,
-        notes,
-        requesterContact: contactInfo,
+        requestedQuantity: sanitizeNumber(quantity, 1, maxQty, 1),
+        neededByDate: sanitizeText(neededByDate, 30),
+        notes: sanitizeText(notes, 500),
+        requesterContact: sanitizeText(contactInfo, 100),
       }, currentUser);
 
       addToast(`Request for ${quantity} ${resource.unit} submitted to ${resource.ownerName}!`, 'success');

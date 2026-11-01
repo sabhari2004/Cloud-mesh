@@ -18,8 +18,10 @@ import {
   Phone,
   MapPin,
   ExternalLink,
-  HandHeart
+  HandHeart,
+  Download
 } from 'lucide-react';
+import { exportToCSV } from '../utils/exportData';
 import { userService } from '../services/userService';
 import { emergencyService } from '../services/emergencyService';
 import { resourceService } from '../services/resourceService';
@@ -290,10 +292,18 @@ export const AdminPage = ({ onSelectIncident }) => {
       {/* Tab 1: Incidents Triage Management */}
       {activeTab === 'incidents' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <p className="text-xs sm:text-sm text-slate-500 font-medium">
               Full incident board. Click any emergency to view field details, assign dispatch, or update operations.
             </p>
+            <button
+              onClick={() => exportToCSV(incidents, 'cloudmesh-incident-triage-report.csv')}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-800 font-bold rounded-xl text-xs border border-slate-200 transition-colors shadow-xs shrink-0 self-start sm:self-auto"
+              title="Download CSV report for municipal disaster dispatch"
+            >
+              <Download className="w-3.5 h-3.5 text-rose-600" />
+              <span>Export Incidents (CSV)</span>
+            </button>
           </div>
 
           <div className="bg-white rounded-3xl border border-slate-200/90 overflow-hidden shadow-sm">
@@ -472,9 +482,19 @@ export const AdminPage = ({ onSelectIncident }) => {
       {/* Tab 3: Resource Inventory Oversight */}
       {activeTab === 'resources' && (
         <div className="space-y-4">
-          <p className="text-xs sm:text-sm text-slate-500 font-medium">
-            System overview of community mutual aid inventory across all neighborhoods
-          </p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <p className="text-xs sm:text-sm text-slate-500 font-medium">
+              System overview of community mutual aid inventory across all neighborhoods
+            </p>
+            <button
+              onClick={() => exportToCSV(resources, 'cloudmesh-inventory-report.csv')}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-800 font-bold rounded-xl text-xs border border-slate-200 transition-colors shadow-xs shrink-0 self-start sm:self-auto"
+              title="Download CSV report for supply logistics"
+            >
+              <Download className="w-3.5 h-3.5 text-blue-600" />
+              <span>Export Inventory (CSV)</span>
+            </button>
+          </div>
 
           <div className="bg-white rounded-3xl border border-slate-200/90 overflow-hidden shadow-sm">
             <div className="overflow-x-auto">

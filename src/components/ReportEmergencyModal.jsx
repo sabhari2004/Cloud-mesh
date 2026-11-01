@@ -13,6 +13,7 @@ import { emergencyService } from '../services/emergencyService';
 import { aiService } from '../services/aiService';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from './Toast';
+import { sanitizeText } from '../utils/sanitize';
 
 export const ReportEmergencyModal = ({ isOpen, onClose, onSuccess }) => {
   const { currentUser } = useAuth();
@@ -93,14 +94,14 @@ export const ReportEmergencyModal = ({ isOpen, onClose, onSuccess }) => {
 
     try {
       await emergencyService.createEmergencyReport({
-        title,
-        description,
+        title: sanitizeText(title, 150),
+        description: sanitizeText(description, 2000),
         category,
-        location,
+        location: sanitizeText(location, 150),
         severity,
         immediateDanger,
-        contactName,
-        contactPhone,
+        contactName: sanitizeText(contactName, 80),
+        contactPhone: sanitizeText(contactPhone, 30),
       }, currentUser);
 
       addToast('Emergency report dispatched to local responders and community board', 'warning');

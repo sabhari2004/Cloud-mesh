@@ -33,3 +33,4 @@ describe('Security & Business Rule Assertions', () => {
     expect(canTransitionIncident('admin', 'resolved')).toBe(true);
   });
 });
+
